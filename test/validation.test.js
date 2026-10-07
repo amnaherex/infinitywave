@@ -1,0 +1,11 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {validateDraft} from '../src/validation.js';
+import {projectScope} from '../src/permissions.js';
+const directory=[{id:'PM01',role:'MANAGER'},{id:'DEV01',role:'AGENT'}];
+const draft=()=>({projects:[{name:'Website',clientName:'Client',description:'Demo website',managerId:'PM01',deadline:'2026-10-20',tasks:[{title:'UI',description:'Responsive UI',assigneeId:'DEV01',deadline:'2026-10-12',estimatedHours:12}]}]});
+test('accepts complete existing assignments',()=>assert.equal(validateDraft(draft(),directory).projects.length,1));
+test('rejects unknown people and wrong roles',()=>{for(const id of ['Kamran','DEV01']){const d=draft();d.projects[0].managerId=id;assert.throws(()=>validateDraft(d,directory),{code:'INVALID_DRAFT'});}});
+test('rejects impossible dates, late tasks and nonpositive hours',()=>{for(const change of [{deadline:'2026-02-30'},{deadline:'2026-10-21'},{estimatedHours:0},{assigneeId:'PM01'}]){const d=draft();Object.assign(d.projects[0].tasks[0],change);assert.throws(()=>validateDraft(d,directory));}});
+test('rejects incomplete drafts',()=>{const d=draft();delete d.projects[0].clientName;assert.throws(()=>validateDraft(d,directory));});
+test('agent and manager access scopes require session user ID',()=>{assert.match(projectScope({id:'DEV01',role:'AGENT'}).sql,/EXISTS/);assert.deepEqual(projectScope({id:'PM01',role:'MANAGER'}).values,['PM01']);assert.equal(projectScope({role:'ADMIN'}).sql,'TRUE');});
