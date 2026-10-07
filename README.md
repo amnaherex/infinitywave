@@ -1,9 +1,9 @@
-# InfinityWave — AI Project Manager backend
+# InfinityWave — AI Project Manager
 
 Backend for the Infinity Hack 2026 NovaWorks challenge. Admin submits meeting text; Gemini extracts projects/tasks; validated records are saved atomically in PostgreSQL. Managers see their own projects; agents see only their tasks and related project details.
 
 ## Stack
-Node.js 22+, Express 5, PostgreSQL (`pg`), Zod, bcryptjs, Gemini REST API. Database-backed HttpOnly cookie sessions and server-side role filtering. No frontend, registration, cost calculation or progress monitoring.
+Node.js 22+, Express 5, PostgreSQL (`pg`), Zod, bcryptjs, Gemini REST API. Database-backed HttpOnly cookie sessions and server-side role filtering. Responsive HTML/CSS/JavaScript frontend served by Express. No frontend build step. No registration, cost calculation or progress monitoring.
 
 ## Local setup — PowerShell
 Install Node.js 22+ and PostgreSQL, or run Docker Desktop with its Linux engine.
@@ -21,11 +21,25 @@ For an existing PostgreSQL server, skip Docker, create an empty `infinitywave` d
 | DATABASE_URL | PostgreSQL URL; URL-encode special characters in credentials |
 | GEMINI_API_KEY | Your key, stored only on the backend |
 | GEMINI_MODEL | Model supporting structured JSON; default gemini-3.8-flash |
-| FRONTEND_ORIGIN | Exact frontend origin; default http://localhost:5173 |
+| FRONTEND_ORIGIN | Exact frontend origin; default http://localhost:4000 |
 | PORT | Default 4000 |
 | NODE_ENV | development locally; production for secure HTTPS cookies |
 
 No live key is included. Never commit `.env`. Production requires same-site HTTPS frontend/backend routing and the database provider's required TLS settings. Browser requests must use `credentials: 'include'`. Permissions run in backend queries; database access must be restricted to the backend.
+
+## Open the application
+After `npm start`, open **http://localhost:4000**. Only one terminal/server is required.
+If reusing your previous `.env`, change `FRONTEND_ORIGIN=http://localhost:4000` (the old backend used 5173). If you change `PORT`, update the origin to match. Use the exact same host in your browser; localhost and 127.0.0.1 are different origins.
+
+Choose a demo account on the login screen to fill its credentials, then sign in. The administrator can load the supplied meeting using **Create from transcript > Load supplied meeting**, or paste a modified meeting. Click **Create from transcript** to call the real AI endpoint and save records. The sample button loads text only; it does not preload project answers. Creation retries preserve an idempotency key for unchanged input, including across refreshes. Change the transcript to begin a different submission.
+
+The UI includes a role-specific overview, searchable/sortable projects and tasks, project and task detail pages, and a searchable read-only team directory. Agents open My Tasks after login. Session expiry returns to login. Validation issues appear beneath the transcript; edit the original meeting to resolve them and retry. Project/task descriptions are visible on detail pages. Pages use hash routes so direct links and refresh work without a routing build step.
+
+## Verification performed for this update
+The existing backend unit tests and frontend static-route test pass. JavaScript syntax and static serving were checked. Automated visual/browser verification could not run because the browser binary was unavailable and its download failed. A live PostgreSQL/Gemini end-to-end run was not performed. Run the integration command against your dedicated test database and rehearse real conversion with your own configured key before judging.
+
+## Manual UI checks
+Log in as admin, load the supplied meeting, create projects, and open both a project and a task. Search and sort the lists; filter the directory. Refresh a detail page to confirm the session and saved data persist. Log out, then sign in as Ayesha, Ali, and Hamza to verify scoped views. Try an incomplete transcript to check the error display and a corrected version to retry. Resize to a narrow mobile viewport and check navigation and horizontal table scrolling.
 
 ## Demo users
 Every account uses **Demo123!**. Passwords are stored as bcrypt hashes.
@@ -68,7 +82,7 @@ Project shape: `{name,clientName,description,managerId,deadline,tasks}`. Task sh
 
 ### Frontend example
 ```javascript
-const API = 'http://localhost:4000';
+const API = ''; // frontend is served by the same Express application
 await fetch(`${API}/api/auth/login`, {
  method:'POST', credentials:'include', headers:{'Content-Type':'application/json'},
  body:JSON.stringify({email:'admin@novaworks.example',password:'Demo123!'})
@@ -97,4 +111,4 @@ Expect UrbanCart/Ayesha/2026-10-20, QuickServe/Bilal/2026-10-24, HelpDeskPro/Hin
 No live deployment/video is included. Deploy to a Node-compatible host with hosted PostgreSQL. Configure environment variables, run `npm ci`, `npm run db:setup` once, then `npm start`. Configure HTTPS, same-site routing, CORS and database TLS. Docker credentials are local demo values. Before judging add actual team name, live/demo-video links, deployment provider and deployment steps. Local submissions require a recorded demo plus setup instructions.
 
 ## Limitations
-Backend only; frontend remains to be built. Gemini needs internet/quota and output accuracy requires rehearsal. Optional editing is limited to correcting unsaved drafts. Rate limiting is per process; creation locking works across backend instances. Expired sessions are rejected but not automatically pruned. Schema setup is an initial idempotent script, not a migration framework. Failed conversion may call Gemini again on retry, but cannot leave partial project records.
+Gemini needs internet/quota and output accuracy requires rehearsal. Optional editing is limited to correcting unsaved drafts. Rate limiting is per process; creation locking works across backend instances. Expired sessions are rejected but not automatically pruned. Schema setup is an initial idempotent script, not a migration framework. Failed conversion may call Gemini again on retry, but cannot leave partial project records.
